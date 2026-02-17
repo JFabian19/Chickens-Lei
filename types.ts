@@ -9,7 +9,8 @@ export interface MenuCategory {
   nota?: string;
   items: MenuItem[];
   // Helper for UI theme decision
-  theme: 'parchment' | 'grunge'; 
+  theme: 'parchment' | 'grunge';
+  imagen?: string;
 }
 
 export interface BusinessInfo {

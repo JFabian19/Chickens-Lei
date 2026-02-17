@@ -27,12 +27,20 @@ export const MenuCategory: React.FC<Props> = ({ category, id }) => {
         </h2>
       </div>
 
-      {/* Category Image Placeholder - 3:2 Aspect Ratio */}
+      {/* Category Image - 3:2 Aspect Ratio */}
       <div className="mb-8 mx-auto w-full max-w-lg shadow-md rounded-lg overflow-hidden relative border-2 border-dashed border-stone-400 bg-stone-200">
         <div className="aspect-[3/2] w-full flex items-center justify-center">
-          <span className="text-xl font-bold uppercase tracking-widest text-stone-500 opacity-70">
-            ACA VA IMAGEN
-          </span>
+          {category.imagen ? (
+            <img
+              src={category.imagen}
+              alt={category.categoria}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-xl font-bold uppercase tracking-widest text-stone-500 opacity-70">
+              ACA VA IMAGEN
+            </span>
+          )}
         </div>
       </div>
 

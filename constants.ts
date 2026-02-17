@@ -21,6 +21,7 @@ export const DATA: MenuData = {
     {
       categoria: "Pollos a la Brasa",
       theme: "parchment",
+      imagen: "/pollo a la brasa.png",
       items: [
         {
           nombre: "1 Pollo",
@@ -47,6 +48,7 @@ export const DATA: MenuData = {
     {
       categoria: "Pollo Broaster",
       theme: "parchment",
+      imagen: "/broaster.png",
       nota: "Puedes pedirlo con papas o camotes fritos.",
       items: [
         { nombre: "Presa Pecho", precio: 13.00 },
@@ -59,6 +61,7 @@ export const DATA: MenuData = {
     {
       categoria: "Salchipapas",
       theme: "grunge",
+      imagen: "/salchipapa.png",
       items: [
         {
           nombre: "Clásica",
@@ -100,6 +103,7 @@ export const DATA: MenuData = {
     {
       categoria: "Hamburguesas",
       theme: "grunge",
+      imagen: "/hamburguesa.png",
       items: [
         { nombre: "Carne", precio: 7.00 },
         { nombre: "Pollo", precio: 7.00 },
@@ -112,6 +116,7 @@ export const DATA: MenuData = {
     {
       categoria: "Hamburguesas Especiales",
       theme: "grunge",
+      imagen: "/especiales.png",
       items: [
         {
           nombre: "Ranchera",
