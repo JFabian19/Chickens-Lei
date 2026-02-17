@@ -8,22 +8,25 @@ interface Props {
 
 export const CategoryNav: React.FC<Props> = ({ categories }) => {
   const [activeId, setActiveId] = useState<string>(categories[0].categoria);
+  const navContainerRef = React.useRef<HTMLDivElement>(null);
 
   /* Scroll Spy Logic to update active state on scroll */
   useEffect(() => {
     const handleScrollSpy = () => {
       // Offset to ensure the active state switches when the header enters the view reasonably
-      // Nav height is approx 60-80px. We use 100px to trigger slightly early.
-      const spyOffset = 120;
+      const spyOffset = 150; // Increased offset slightly for better UX
       const scrollPosition = window.scrollY + spyOffset;
 
+      // Default to first category
       let currentSection = categories[0].categoria;
 
       // Find the section that covers the current scroll position
+      // Check from bottom up or top down? Top down is fine if we track the "last one that passed the threshold"
       for (const cat of categories) {
         const element = document.getElementById(cat.categoria);
         if (element) {
-          // If the top of the section is above our scroll marker, it's a candidate
+          // If the top of the section is above our scroll marker, it's the current candidate
+          // We want the last one that satisfies this to be the current section
           if (element.offsetTop <= scrollPosition) {
             currentSection = cat.categoria;
           }
@@ -40,7 +43,25 @@ export const CategoryNav: React.FC<Props> = ({ categories }) => {
     handleScrollSpy();
 
     return () => window.removeEventListener('scroll', handleScrollSpy);
-  }, [categories, activeId]);
+  }, [categories, activeId]); // activeId in deps causes re-bind, but it's needed for the check.
+
+  /* NEW: Scroll the active button into view when it changes */
+  useEffect(() => {
+    if (navContainerRef.current) {
+      // We need to match the button. We can use the data-category attribute.
+      // Special handling for special characters in selector if needed, but categories usually simple.
+      // Using CSS.escape() for safety although quotes handle most.
+      const activeButton = navContainerRef.current.querySelector(`button[data-category="${activeId.replace(/"/g, '\\"')}"]`);
+
+      if (activeButton) {
+        activeButton.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
+      }
+    }
+  }, [activeId]);
 
   const handleScroll = (id: string) => {
     const element = document.getElementById(id);
@@ -53,21 +74,25 @@ export const CategoryNav: React.FC<Props> = ({ categories }) => {
         top: offsetPosition,
         behavior: "smooth"
       });
-      // State will be updated by the scroll listener, but we can optimistically set it too
+      // State will be updated by the scroll listener eventually, but we act immediately for UI responsiveness
       setActiveId(id);
     }
   };
 
   return (
     <nav className="sticky top-0 z-40 bg-white shadow-md border-b border-stone-200">
-      <div className="flex overflow-x-auto py-3 px-2 hide-scrollbar space-x-2">
+      <div
+        ref={navContainerRef}
+        className="flex overflow-x-auto py-3 px-2 hide-scrollbar space-x-2"
+      >
         {categories.map((cat) => (
           <button
             key={cat.categoria}
+            data-category={cat.categoria}
             onClick={() => handleScroll(cat.categoria)}
             className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold uppercase transition-all duration-300 flex-shrink-0 border-2 ${activeId === cat.categoria
-                ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105'
-                : 'bg-stone-50 text-stone-600 border-stone-200 hover:border-orange-300'
+              ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105'
+              : 'bg-stone-50 text-stone-600 border-stone-200 hover:border-orange-300'
               }`}
             style={{ fontFamily: 'Roboto Condensed' }}
           >

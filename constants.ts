@@ -105,12 +105,12 @@ export const DATA: MenuData = {
       theme: "grunge",
       imagen: "/hamburguesa.png",
       items: [
-        { nombre: "Carne", precio: 7.00 },
-        { nombre: "Pollo", precio: 7.00 },
-        { nombre: "Pollo Deshilachado", precio: 7.00 },
-        { nombre: "Hot Dog", precio: 7.00 },
-        { nombre: "Chorizo", precio: 8.00 },
-        { nombre: "Filete de Pollo", precio: 8.00 }
+        { nombre: "Carne", precio: 7.00, descripcion: "Incluye papas fritas y ensalada." },
+        { nombre: "Pollo", precio: 7.00, descripcion: "Incluye papas fritas y ensalada." },
+        { nombre: "Pollo Deshilachado", precio: 7.00, descripcion: "Incluye papas fritas y ensalada." },
+        { nombre: "Hot Dog", precio: 7.00, descripcion: "Incluye papas fritas y ensalada." },
+        { nombre: "Chorizo", precio: 8.00, descripcion: "Incluye papas fritas y ensalada." },
+        { nombre: "Filete de Pollo", precio: 8.00, descripcion: "Incluye papas fritas y ensalada." }
       ]
     },
     {
@@ -163,6 +163,26 @@ export const DATA: MenuData = {
           descripcion: "Carne + Filete de pollo + Huevo + Queso + Jamón + Tocino.",
           precio: 20.00
         }
+      ]
+    },
+    {
+      categoria: "Gaseosas",
+      theme: "parchment",
+      imagen: "/gaseosas.png",
+      nota: "Sabores: Inka Cola o Coca-Cola",
+      items: [
+        // Gaseosa de vidrio
+        { nombre: "Gaseosa Vidrio 1.5 Lt", precio: 9.00 },
+        { nombre: "Gaseosa Vidrio 1 Lt", precio: 6.00 },
+        { nombre: "Gaseosa Vidrio 500 ml", precio: 4.00, descripcion: "1/2 Litro" },
+        { nombre: "Gaseosa Vidrio 296 ml", precio: 2.00 },
+        { nombre: "Gaseosa Vidrio 137 ml", precio: 1.50 },
+
+        // Gaseosa de plástico
+        { nombre: "Gaseosa Plástico 3 Lt", precio: 15.00 },
+        { nombre: "Gaseosa Plástico 1.5 Lt", precio: 9.00 },
+        { nombre: "Gaseosa Plástico 1 Lt", precio: 6.00 },
+        { nombre: "Gaseosa Plástico 600 ml", precio: 3.50 }
       ]
     }
   ]

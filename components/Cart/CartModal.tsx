@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCart } from '../../context/CartContext';
 import { MenuItem } from '../../types';
 import { Minus, Plus, Trash2, X, AlertCircle, ArrowRight, ArrowLeft } from 'lucide-react';
@@ -23,54 +23,96 @@ interface Props {
     phoneNumber: string;
 }
 
-// Stores sauce preferences for each item in the cart
-interface ItemSauceConfig {
-    itemId: string; // Creates a unique ID based on item name and index to distinguish multiple of same item if needed, though here we group by name. Actually, let's group by name in the cart usually, but for sauce config, we iterate by cart item index if multiple quantities? 
-    // The user requirement implies "cada pedido debe tener su propia configuracion". If I have 2 "Pollo a la Brasa", do I configure once for both or individually?
-    // "tenemos 3 platos, marcados... cremas para x plato... cremas para x plato" implies iterating through distinct items.
-    // Since our cart groups by name (quantity > 1), we should probably ask sauces for the *group* or split them?
-    // Simpler approach for now: Configure sauces for the ITEM GROUP. "For the 2 Pollos, I want these sauces". 
-    // If they want different sauces for each Pollo, they'd need to add them separately which our current cart logic merges.
-    // Let's stick to configuring for the Line Item.
-
-    sauces: string[];
-}
+import { useMenu } from '../../context/MenuContext';
 
 export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
     const { cart, updateQuantity, removeFromCart, clearCart, totalPrice } = useCart();
+    const { menuData } = useMenu();
     const [step, setStep] = useState<'cart' | 'sauces'>('cart');
 
-    // Track which item we are currently configuring
-    const [currentConfigIndex, setCurrentConfigIndex] = useState(0);
+    // Helper to check if item is Broaster
+    const isBroaster = (itemName: string) => {
+        const broasterCategory = menuData.menu.find(c => c.categoria === "Pollo Broaster");
+        return broasterCategory?.items.some(i => i.nombre === itemName);
+    };
 
-    // Map of item name -> selected sauces
-    const [sauceConfigs, setSauceConfigs] = useState<Record<string, string[]>>({});
+    // Helper to check if item is Soda
+    const isSoda = (itemName: string) => {
+        const sodaCategory = menuData.menu.find(c => c.categoria === "Gaseosas");
+        return sodaCategory?.items.some(i => i.nombre === itemName);
+    };
 
-    useEffect(() => {
-        // Initialize configs with empty arrays or existing ones
-        const initialConfigs: Record<string, string[]> = {};
-        cart.forEach(item => {
-            if (!sauceConfigs[item.nombre]) {
-                initialConfigs[item.nombre] = [];
-            } else {
-                initialConfigs[item.nombre] = sauceConfigs[item.nombre];
+    // Expand cart items into individual instances for configuration
+    const expandedCart = useMemo(() => {
+        const items: Array<{ nombre: string; precio: number | null; quantity: number; instanceId: string }> = [];
+        cart.forEach((item) => {
+            for (let i = 0; i < item.quantity; i++) {
+                items.push({
+                    nombre: item.nombre,
+                    precio: item.precio,
+                    quantity: 1, // Logic is now per unit
+                    instanceId: `${item.nombre}-${i}`,
+                });
             }
         });
-        setSauceConfigs(prev => ({ ...prev, ...initialConfigs }));
+        return items;
     }, [cart]);
+
+    // All items are now configurable (Sodas need flavor choice)
+    const configurableItems = expandedCart;
+
+    // Track which configurable item we are currently configuring
+    const [currentConfigIndex, setCurrentConfigIndex] = useState(0);
+
+    // Map of instanceId -> selected sauces
+    const [sauceConfigs, setSauceConfigs] = useState<Record<string, string[]>>({});
+    // Map of instanceId -> has salad (true/false)
+    const [saladConfigs, setSaladConfigs] = useState<Record<string, boolean>>({});
+    // Map of instanceId -> side (Papas/Camotes)
+    const [sideConfigs, setSideConfigs] = useState<Record<string, 'Papas' | 'Camote'>>({});
+    // Map of instanceId -> soda flavor (Inka Cola/Coca-Cola)
+    const [sodaConfigs, setSodaConfigs] = useState<Record<string, 'Inka Cola' | 'Coca-Cola'>>({});
+
+    useEffect(() => {
+        // Initialize configs if missing
+        const newSauceConfigs = { ...sauceConfigs };
+        const newSaladConfigs = { ...saladConfigs };
+        const newSideConfigs = { ...sideConfigs };
+        const newSodaConfigs = { ...sodaConfigs };
+
+        expandedCart.forEach(item => {
+            if (!newSauceConfigs[item.instanceId]) {
+                newSauceConfigs[item.instanceId] = [];
+            }
+            if (newSaladConfigs[item.instanceId] === undefined) {
+                newSaladConfigs[item.instanceId] = true; // Default to with salad
+            }
+            if (!newSideConfigs[item.instanceId] && isBroaster(item.nombre)) {
+                newSideConfigs[item.instanceId] = 'Papas'; // Default side
+            }
+            if (!newSodaConfigs[item.instanceId] && isSoda(item.nombre)) {
+                newSodaConfigs[item.instanceId] = 'Inka Cola'; // Default flavor
+            }
+        });
+
+        setSauceConfigs(newSauceConfigs);
+        setSaladConfigs(newSaladConfigs);
+        setSideConfigs(newSideConfigs);
+        setSodaConfigs(newSodaConfigs);
+    }, [expandedCart.length]); // Re-run if total item count changes
 
     if (cart.length === 0) {
         onClose();
         return null;
     }
 
-    const currentItem = cart[currentConfigIndex];
+    const currentItem = configurableItems[currentConfigIndex];
 
     const handleSelectAllSauces = () => {
         if (!currentItem) return;
         setSauceConfigs(prev => ({
             ...prev,
-            [currentItem.nombre]: [...SAUCES]
+            [currentItem.instanceId]: [...SAUCES]
         }));
     };
 
@@ -78,13 +120,13 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
         if (!currentItem) return;
         setSauceConfigs(prev => ({
             ...prev,
-            [currentItem.nombre]: []
+            [currentItem.instanceId]: []
         }));
     };
 
     const toggleSauce = (sauce: string) => {
         if (!currentItem) return;
-        const currentSauces = sauceConfigs[currentItem.nombre] || [];
+        const currentSauces = sauceConfigs[currentItem.instanceId] || [];
 
         let newSauces;
         if (currentSauces.includes(sauce)) {
@@ -95,12 +137,36 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
 
         setSauceConfigs(prev => ({
             ...prev,
-            [currentItem.nombre]: newSauces
+            [currentItem.instanceId]: newSauces
+        }));
+    };
+
+    const toggleSalad = (hasSalad: boolean) => {
+        if (!currentItem) return;
+        setSaladConfigs(prev => ({
+            ...prev,
+            [currentItem.instanceId]: hasSalad
+        }));
+    };
+
+    const toggleSide = (side: 'Papas' | 'Camote') => {
+        if (!currentItem) return;
+        setSideConfigs(prev => ({
+            ...prev,
+            [currentItem.instanceId]: side
+        }));
+    };
+
+    const toggleSodaFlavor = (flavor: 'Inka Cola' | 'Coca-Cola') => {
+        if (!currentItem) return;
+        setSodaConfigs(prev => ({
+            ...prev,
+            [currentItem.instanceId]: flavor
         }));
     };
 
     const handleNext = () => {
-        if (currentConfigIndex < cart.length - 1) {
+        if (currentConfigIndex < configurableItems.length - 1) {
             setCurrentConfigIndex(prev => prev + 1);
         } else {
             handleSendOrder();
@@ -116,21 +182,37 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
     };
 
     const handleSendOrder = () => {
-        // Format message
         let message = `*Hola, deseo realizar el siguiente pedido:*\n\n`;
 
-        cart.forEach((item) => {
-            const itemTotal = (item.precio || 0) * item.quantity;
-            message += `*${item.quantity} x ${item.nombre}*\n`;
-            message += `   Precio: S/ ${itemTotal.toFixed(2)}\n`;
+        expandedCart.forEach((item) => {
+            message += `*1 x ${item.nombre}*\n`;
 
-            const config = sauceConfigs[item.nombre] || [];
-            if (config.length === 0) {
-                message += `   Cremas: Ninguna\n`;
-            } else if (config.length === SAUCES.length) {
-                message += `   Cremas: Todas\n`;
+            if (isSoda(item.nombre)) {
+                // Soda Config
+                const flavor = sodaConfigs[item.instanceId] || 'Inka Cola';
+                message += `   Sabor: ${flavor}\n`;
             } else {
-                message += `   Cremas: ${config.join(', ')}\n`;
+                // Food Config specific logic
+
+                // Side config (only for Broaster)
+                if (isBroaster(item.nombre)) {
+                    const side = sideConfigs[item.instanceId] || 'Papas';
+                    message += `   Guarnición: ${side}\n`;
+                }
+
+                // Salad config
+                const hasSalad = saladConfigs[item.instanceId];
+                message += `   Ensalada: ${hasSalad ? 'Sí' : 'No'}\n`;
+
+                // Sauce config
+                const config = sauceConfigs[item.instanceId] || [];
+                if (config.length === 0) {
+                    message += `   Cremas: Ninguna\n`;
+                } else if (config.length === SAUCES.length) {
+                    message += `   Cremas: Todas\n`;
+                } else {
+                    message += `   Cremas: ${config.join(', ')}\n`;
+                }
             }
             message += `\n`;
         });
@@ -145,12 +227,18 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
     };
 
     const startSauceConfiguration = () => {
-        setCurrentConfigIndex(0);
-        setStep('sauces');
+        if (configurableItems.length === 0) {
+            handleSendOrder();
+        } else {
+            setCurrentConfigIndex(0);
+            setStep('sauces');
+        }
     };
 
-    // Helper to check current selection state for the active item
-    const currentSelections = currentItem ? (sauceConfigs[currentItem.nombre] || []) : [];
+    const currentSelections = currentItem ? (sauceConfigs[currentItem.instanceId] || []) : [];
+    const currentSalad = currentItem ? (saladConfigs[currentItem.instanceId] !== false) : true;
+    const currentSide = currentItem ? (sideConfigs[currentItem.instanceId] || 'Papas') : 'Papas';
+    const currentSodaFlavor = currentItem ? (sodaConfigs[currentItem.instanceId] || 'Inka Cola') : 'Inka Cola';
 
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -162,7 +250,7 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
                         {step === 'cart' ? (
                             <>🛒 Tu Pedido</>
                         ) : (
-                            <>🌶️ Cremas ({currentConfigIndex + 1}/{cart.length})</>
+                            <>🌶️ Configuración ({currentConfigIndex + 1}/{configurableItems.length})</>
                         )}
                     </h2>
                     <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full transition-colors">
@@ -204,48 +292,151 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
                         <div className="space-y-6 animate-in slide-in-from-right-8 duration-300">
                             {/* Item Info Header */}
                             <div className="text-center mb-6">
-                                <span className="text-sm font-bold text-orange-600 uppercase tracking-widest">Configurando cremas para:</span>
+                                <span className="text-sm font-bold text-orange-600 uppercase tracking-widest">Configurando:</span>
                                 <h3 className="text-2xl font-black text-gray-800 mt-1 leading-tight">
                                     {currentItem?.nombre}
                                 </h3>
-                                <p className="text-gray-500 text-sm mt-1">Cantidad: {currentItem?.quantity}</p>
+                                {/* Show which number this is (e.g., #1 of 2) */}
+                                {configurableItems.filter(i => i.nombre === currentItem?.nombre).length > 1 && (
+                                    <p className="text-gray-500 text-sm mt-1">
+                                        Unidad #{configurableItems.filter((item, idx) => item.nombre === currentItem.nombre && idx <= currentConfigIndex).length}
+                                    </p>
+                                )}
                             </div>
 
-                            {/* Selection Controls */}
-                            <div className="flex gap-3 justify-center">
-                                <button
-                                    onClick={handleSelectAllSauces}
-                                    className="px-4 py-2 text-sm font-bold uppercase bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors shadow-sm"
-                                >
-                                    Todas
-                                </button>
-                                <button
-                                    onClick={handleDeselectAllSauces}
-                                    className="px-4 py-2 text-sm font-bold uppercase bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors shadow-sm"
-                                >
-                                    Ninguna
-                                </button>
-                            </div>
-
-                            {/* Sauces Grid */}
-                            <div className="grid grid-cols-2 gap-3">
-                                {SAUCES.map((sauce) => (
-                                    <div
-                                        key={sauce}
-                                        onClick={() => toggleSauce(sauce)}
-                                        className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${currentSelections.includes(sauce)
-                                            ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-md transform scale-[1.02]'
-                                            : 'border-gray-200 hover:border-gray-300 text-gray-600 bg-white'
-                                            }`}
-                                    >
-                                        <div className={`w-5 h-5 rounded border flex items-center justify-center mr-3 transition-colors ${currentSelections.includes(sauce) ? 'bg-orange-500 border-orange-500' : 'border-gray-300 bg-white'
-                                            }`}>
-                                            {currentSelections.includes(sauce) && <div className="w-2.5 h-2.5 bg-white rounded-sm" />}
-                                        </div>
-                                        <span className="font-bold text-sm tracking-wide">{sauce}</span>
+                            {/* CONFIGURATION CONTENT - CONDITIONAL RENDERING */}
+                            {currentItem && isSoda(currentItem.nombre) ? (
+                                /* SODA CONFIGURATION */
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-2">
+                                    <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                        🥤 Sabor
+                                    </h4>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => toggleSodaFlavor('Inka Cola')}
+                                            className={`flex-1 py-4 px-4 rounded-lg font-bold text-sm transition-all border-2 flex flex-col items-center gap-2 ${currentSodaFlavor === 'Inka Cola'
+                                                ? 'border-yellow-400 bg-yellow-50 text-yellow-700'
+                                                : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            <div className="w-6 h-6 rounded-full bg-yellow-400 border-2 border-yellow-600"></div>
+                                            Inka Cola
+                                        </button>
+                                        <button
+                                            onClick={() => toggleSodaFlavor('Coca-Cola')}
+                                            className={`flex-1 py-4 px-4 rounded-lg font-bold text-sm transition-all border-2 flex flex-col items-center gap-2 ${currentSodaFlavor === 'Coca-Cola'
+                                                ? 'border-red-500 bg-red-50 text-red-700'
+                                                : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-red-800"></div>
+                                            Coca-Cola
+                                        </button>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ) : (
+                                /* FOOD CONFIGURATION (Sides, Salad, Sauces) */
+                                <>
+                                    {/* Side Toggle (Only for Broaster) */}
+                                    {currentItem && isBroaster(currentItem.nombre) && (
+                                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-2">
+                                            <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                                🍟 Guarnición
+                                            </h4>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => toggleSide('Papas')}
+                                                    className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm transition-all border-2 ${currentSide === 'Papas'
+                                                        ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
+                                                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    Papas Fritas
+                                                </button>
+                                                <button
+                                                    onClick={() => toggleSide('Camote')}
+                                                    className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm transition-all border-2 ${currentSide === 'Camote'
+                                                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                                                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    Camote Frito
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Salad Toggle */}
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-2">
+                                        <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                            🥗 Ensalada
+                                        </h4>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => toggleSalad(true)}
+                                                className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm transition-all border-2 ${currentSalad
+                                                    ? 'border-green-500 bg-green-50 text-green-700'
+                                                    : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                                                    }`}
+                                            >
+                                                Con Ensalada
+                                            </button>
+                                            <button
+                                                onClick={() => toggleSalad(false)}
+                                                className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm transition-all border-2 ${!currentSalad
+                                                    ? 'border-red-500 bg-red-50 text-red-700'
+                                                    : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                                                    }`}
+                                            >
+                                                Sin Ensalada
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <hr className="border-gray-200" />
+
+                                    {/* Sauces Header */}
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="font-bold text-gray-700 flex items-center gap-2">
+                                            🧴 Cremas
+                                        </h4>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={handleSelectAllSauces}
+                                                className="text-xs font-bold uppercase text-green-600 hover:bg-green-50 px-2 py-1 rounded"
+                                            >
+                                                Todas
+                                            </button>
+                                            <button
+                                                onClick={handleDeselectAllSauces}
+                                                className="text-xs font-bold uppercase text-red-600 hover:bg-red-50 px-2 py-1 rounded"
+                                            >
+                                                Ninguna
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Sauces Grid */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {SAUCES.map((sauce) => (
+                                            <div
+                                                key={sauce}
+                                                onClick={() => toggleSauce(sauce)}
+                                                className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${currentSelections.includes(sauce)
+                                                    ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-md transform scale-[1.02]'
+                                                    : 'border-gray-200 hover:border-gray-300 text-gray-600 bg-white'
+                                                    }`}
+                                            >
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center mr-3 transition-colors ${currentSelections.includes(sauce) ? 'bg-orange-500 border-orange-500' : 'border-gray-300 bg-white'
+                                                    }`}>
+                                                    {currentSelections.includes(sauce) && <div className="w-2.5 h-2.5 bg-white rounded-sm" />}
+                                                </div>
+                                                <span className="font-bold text-sm tracking-wide">{sauce}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>
@@ -262,7 +453,7 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
                                 onClick={startSauceConfiguration}
                                 className="w-full py-4 bg-gray-900 text-white font-bold rounded-xl shadow-lg hover:bg-gray-800 active:scale-[0.98] transition-all text-lg flex items-center justify-center gap-2"
                             >
-                                <span>Configurar Pedido</span>
+                                <span>{configurableItems.length > 0 ? "Configurar Pedido" : "Enviar Pedido"}</span>
                                 <ArrowRight size={20} />
                             </button>
                         </div>
@@ -277,14 +468,14 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
 
                             <button
                                 onClick={handleNext}
-                                className={`flex-1 py-4 font-bold rounded-xl shadow-lg active:scale-[0.98] transition-all text-lg flex items-center justify-center gap-2 ${currentConfigIndex < cart.length - 1
+                                className={`flex-1 py-4 font-bold rounded-xl shadow-lg active:scale-[0.98] transition-all text-lg flex items-center justify-center gap-2 ${currentConfigIndex < configurableItems.length - 1
                                     ? 'bg-orange-600 text-white hover:bg-orange-700'
                                     : 'bg-green-600 text-white hover:bg-green-700'
                                     }`}
                             >
-                                {currentConfigIndex < cart.length - 1 ? (
+                                {currentConfigIndex < configurableItems.length - 1 ? (
                                     <>
-                                        <span>Siguiente Plato</span>
+                                        <span>Siguiente</span>
                                         <ArrowRight size={20} />
                                     </>
                                 ) : (
