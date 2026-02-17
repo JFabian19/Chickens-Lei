@@ -6,6 +6,7 @@ import { CategoryNav } from './components/CategoryNav';
 import { CartProvider, useCart } from './context/CartContext';
 import { FloatingCartButton } from './components/Cart/FloatingCartButton';
 import { CartModal } from './components/Cart/CartModal';
+import { FloatingShareButton } from './components/FloatingShareButton';
 
 import { MenuProvider, useMenu } from './context/MenuContext';
 
@@ -50,6 +51,7 @@ const AppContent: React.FC = () => {
 
       {/* Cart Components */}
       <FloatingCartButton />
+      <FloatingShareButton />
       {openCart && (
         <CartModal
           onClose={() => setOpenCart(false)}
