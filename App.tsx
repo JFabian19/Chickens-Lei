@@ -11,7 +11,7 @@ import { FloatingShareButton } from './components/FloatingShareButton';
 import { MenuProvider, useMenu } from './context/MenuContext';
 
 const AppContent: React.FC = () => {
-  const { openCart, setOpenCart } = useCart();
+  const { openCart, setOpenCart, totalItems } = useCart();
   const { menuData, loading, error } = useMenu();
 
   if (loading) {
@@ -51,7 +51,7 @@ const AppContent: React.FC = () => {
 
       {/* Cart Components */}
       <FloatingCartButton />
-      <FloatingShareButton />
+      <FloatingShareButton hasCart={totalItems > 0} />
       {openCart && (
         <CartModal
           onClose={() => setOpenCart(false)}

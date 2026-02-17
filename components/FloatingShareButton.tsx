@@ -8,7 +8,7 @@ const WhatsAppIcon = () => (
     </svg>
 );
 
-export const FloatingShareButton: React.FC = () => {
+export const FloatingShareButton: React.FC<{ hasCart?: boolean }> = ({ hasCart }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     // Close menu when clicking outside (simple backdrop)
@@ -55,7 +55,7 @@ export const FloatingShareButton: React.FC = () => {
                 />
             )}
 
-            <div className="fixed right-0 top-1/2 -translate-y-1/2 z-50 flex flex-col items-end gap-3 pr-4 sm:pr-6 pointer-events-none">
+            <div className={`fixed right-4 z-50 flex flex-col items-end gap-3 transition-all duration-300 pointer-events-none ${hasCart ? 'bottom-32' : 'bottom-6'}`}>
 
                 {/* Menu Items */}
                 <div className={`flex flex-col gap-2 transition-all duration-300 origin-right ${isOpen ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-8 pointer-events-none'
