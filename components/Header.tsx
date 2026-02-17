@@ -41,7 +41,6 @@ export const Header: React.FC<Props> = ({ info }) => {
         <div className="flex flex-col items-center justify-center gap-2 w-full z-10">
 
           {/* Logo Title Row with Images */}
-          {/* Logo Title Row with Images */}
           <div className="flex flex-row items-center justify-center gap-2 md:gap-8 w-full max-w-[95vw]">
             {/* Left Image (Pot) */}
             <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-48 md:h-48 relative transform -rotate-12 transition-transform hover:scale-110 flex-shrink-0">
