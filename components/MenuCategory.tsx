@@ -61,6 +61,7 @@ export const MenuCategory: React.FC<Props> = ({ category, id }) => {
             item={item}
             index={index}
             categoryName={category.categoria}
+            availableAdditions={category.additions}
           />
         ))}
       </div>

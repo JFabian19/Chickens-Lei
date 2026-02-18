@@ -1,3 +1,8 @@
+export interface Addition {
+  name: string;
+  price: number;
+}
+
 export interface MenuItem {
   nombre: string;
   descripcion?: string;
@@ -11,6 +16,7 @@ export interface MenuCategory {
   // Helper for UI theme decision
   theme: 'parchment' | 'grunge';
   imagen?: string;
+  additions?: Addition[];
 }
 
 export interface BusinessInfo {

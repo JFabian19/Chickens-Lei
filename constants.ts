@@ -50,6 +50,11 @@ export const DATA: MenuData = {
       theme: "parchment",
       imagen: "/broaster.png",
       nota: "Puedes pedirlo con papas o camotes fritos.",
+      additions: [
+        { name: "Huevo", price: 1.50 },
+        { name: "Queso", price: 1.00 },
+        { name: "Tocino", price: 1.00 }
+      ],
       items: [
         { nombre: "Presa Pecho", precio: 13.00 },
         { nombre: "Presa Ala", precio: 13.00 },
@@ -104,6 +109,11 @@ export const DATA: MenuData = {
       categoria: "Hamburguesas",
       theme: "grunge",
       imagen: "/hamburguesa.png",
+      additions: [
+        { name: "Huevo", price: 1.50 },
+        { name: "Queso", price: 1.00 },
+        { name: "Tocino", price: 1.00 }
+      ],
       items: [
         { nombre: "Carne", precio: 7.00, descripcion: "Incluye papas fritas y ensalada." },
         { nombre: "Pollo", precio: 7.00, descripcion: "Incluye papas fritas y ensalada." },
@@ -117,6 +127,11 @@ export const DATA: MenuData = {
       categoria: "Hamburguesas Especiales",
       theme: "grunge",
       imagen: "/especiales.png",
+      additions: [
+        { name: "Huevo", price: 1.50 },
+        { name: "Queso", price: 1.00 },
+        { name: "Tocino", price: 1.00 }
+      ],
       items: [
         {
           nombre: "Ranchera",

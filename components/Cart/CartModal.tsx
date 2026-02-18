@@ -44,14 +44,21 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
 
     // Expand cart items into individual instances for configuration
     const expandedCart = useMemo(() => {
-        const items: Array<{ nombre: string; precio: number | null; quantity: number; instanceId: string }> = [];
+        const items: Array<{
+            nombre: string;
+            precio: number | null;
+            quantity: number;
+            instanceId: string;
+            selectedAdditions?: { name: string; price: number }[];
+        }> = [];
         cart.forEach((item) => {
             for (let i = 0; i < item.quantity; i++) {
                 items.push({
                     nombre: item.nombre,
                     precio: item.precio,
                     quantity: 1, // Logic is now per unit
-                    instanceId: `${item.nombre}-${i}`,
+                    instanceId: `${item.cartId}-${i}`,
+                    selectedAdditions: item.selectedAdditions
                 });
             }
         });
@@ -186,6 +193,10 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
 
         expandedCart.forEach((item) => {
             message += `*1 x ${item.nombre}*\n`;
+            if (item.selectedAdditions && item.selectedAdditions.length > 0) {
+                const adds = item.selectedAdditions.map(a => a.name).join(', ');
+                message += `   Adicionales: ${adds}\n`;
+            }
 
             if (isSoda(item.nombre)) {
                 // Soda Config
@@ -262,31 +273,40 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
                 <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
                     {step === 'cart' ? (
                         <div className="space-y-4">
-                            {cart.map((item) => (
-                                <div key={item.nombre} className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                                    <div className="flex-1 pr-4">
-                                        <h3 className="font-bold text-gray-800 text-lg leading-tight">{item.nombre}</h3>
-                                        <p className="text-sm text-gray-500 font-medium">S/ {item.precio}</p>
-                                    </div>
+                            {cart.map((item) => {
+                                const additionsTotal = item.selectedAdditions?.reduce((sum, add) => sum + add.price, 0) || 0;
+                                const unitPrice = (item.precio || 0) + additionsTotal;
+                                return (
+                                    <div key={item.cartId} className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                        <div className="flex-1 pr-4">
+                                            <h3 className="font-bold text-gray-800 text-lg leading-tight">{item.nombre}</h3>
+                                            {item.selectedAdditions && item.selectedAdditions.length > 0 && (
+                                                <p className="text-xs text-gray-500 italic mb-1">
+                                                    + {item.selectedAdditions.map(a => a.name).join(', ')}
+                                                </p>
+                                            )}
+                                            <p className="text-sm text-gray-500 font-medium">S/ {unitPrice.toFixed(2)}</p>
+                                        </div>
 
-                                    <div className="flex items-center gap-3 bg-gray-100 rounded-lg p-1">
-                                        <button
-                                            onClick={() => updateQuantity(item.nombre, item.quantity - 1)}
-                                            className="p-2 hover:bg-white text-gray-600 rounded-lg transition-all shadow-sm disabled:opacity-50"
-                                            disabled={item.quantity <= 0}
-                                        >
-                                            <Minus size={16} />
-                                        </button>
-                                        <span className="w-6 text-center font-bold text-gray-800 text-lg">{item.quantity}</span>
-                                        <button
-                                            onClick={() => updateQuantity(item.nombre, item.quantity + 1)}
-                                            className="p-2 hover:bg-white text-gray-600 rounded-lg transition-all shadow-sm"
-                                        >
-                                            <Plus size={16} />
-                                        </button>
+                                        <div className="flex items-center gap-3 bg-gray-100 rounded-lg p-1">
+                                            <button
+                                                onClick={() => updateQuantity(item.cartId, item.quantity - 1)}
+                                                className="p-2 hover:bg-white text-gray-600 rounded-lg transition-all shadow-sm disabled:opacity-50"
+                                                disabled={item.quantity <= 0}
+                                            >
+                                                <Minus size={16} />
+                                            </button>
+                                            <span className="w-6 text-center font-bold text-gray-800 text-lg">{item.quantity}</span>
+                                            <button
+                                                onClick={() => updateQuantity(item.cartId, item.quantity + 1)}
+                                                className="p-2 hover:bg-white text-gray-600 rounded-lg transition-all shadow-sm"
+                                            >
+                                                <Plus size={16} />
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     ) : (
                         <div className="space-y-6 animate-in slide-in-from-right-8 duration-300">

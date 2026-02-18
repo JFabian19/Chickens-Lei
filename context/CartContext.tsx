@@ -3,13 +3,15 @@ import { MenuItem } from '../types';
 
 export interface CartItem extends MenuItem {
     quantity: number;
+    selectedAdditions?: { name: string; price: number }[];
+    cartId: string; // Unique ID for cart item management
 }
 
 interface CartContextType {
     cart: CartItem[];
-    addToCart: (item: MenuItem) => void;
-    removeFromCart: (itemName: string) => void;
-    updateQuantity: (itemName: string, quantity: number) => void;
+    addToCart: (item: MenuItem, additions?: { name: string; price: number }[]) => void;
+    removeFromCart: (cartId: string) => void;
+    updateQuantity: (cartId: string, quantity: number) => void;
     clearCart: () => void;
     totalItems: number;
     totalPrice: number;
@@ -36,30 +38,46 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('cart', JSON.stringify(cart));
     }, [cart]);
 
-    const addToCart = (item: MenuItem) => {
+    const addToCart = (item: MenuItem, additions: { name: string; price: number }[] = []) => {
         setCart((prevCart) => {
-            const existingItem = prevCart.find((i) => i.nombre === item.nombre);
-            if (existingItem) {
-                return prevCart.map((i) =>
-                    i.nombre === item.nombre ? { ...i, quantity: i.quantity + 1 } : i
-                );
+            // Find if item with same name AND same additions exists
+            // Since additions order might not matter, sorting helps, but for now simple length & name check
+            // For simplicity, let's treat every "customized" item as unique unless identical deeply.
+
+            const additionsKey = JSON.stringify(additions.sort((a, b) => a.name.localeCompare(b.name)));
+
+            const existingItemIndex = prevCart.findIndex(
+                (i) => i.nombre === item.nombre &&
+                    JSON.stringify((i.selectedAdditions || []).sort((a, b) => a.name.localeCompare(b.name))) === additionsKey
+            );
+
+            if (existingItemIndex > -1) {
+                const updatedCart = [...prevCart];
+                updatedCart[existingItemIndex].quantity += 1;
+                return updatedCart;
             }
-            return [...prevCart, { ...item, quantity: 1 }];
+
+            return [...prevCart, {
+                ...item,
+                quantity: 1,
+                selectedAdditions: additions,
+                cartId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+            }];
         });
     };
 
-    const removeFromCart = (itemName: string) => {
-        setCart((prevCart) => prevCart.filter((item) => item.nombre !== itemName));
+    const removeFromCart = (cartId: string) => {
+        setCart((prevCart) => prevCart.filter((item) => item.cartId !== cartId));
     };
 
-    const updateQuantity = (itemName: string, quantity: number) => {
+    const updateQuantity = (cartId: string, quantity: number) => {
         if (quantity <= 0) {
-            removeFromCart(itemName);
+            removeFromCart(cartId);
             return;
         }
         setCart((prevCart) =>
             prevCart.map((item) =>
-                item.nombre === itemName ? { ...item, quantity } : item
+                item.cartId === cartId ? { ...item, quantity } : item
             )
         );
     };
@@ -69,7 +87,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
-    const totalPrice = cart.reduce((acc, item) => acc + (item.precio || 0) * item.quantity, 0);
+    const totalPrice = cart.reduce((acc, item) => {
+        const itemTotal = (item.precio || 0) + (item.selectedAdditions?.reduce((sum, add) => sum + add.price, 0) || 0);
+        return acc + itemTotal * item.quantity;
+    }, 0);
 
     return (
         <CartContext.Provider

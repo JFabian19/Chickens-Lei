@@ -62,11 +62,23 @@ export const GoogleSheetsService = {
         const categoriesRaw = this.parseCSV(categoriesCsv);
         const dishesRaw = this.parseCSV(dishesCsv);
 
+        const parseAdditions = (additionsStr: string): { name: string; price: number }[] => {
+            if (!additionsStr) return [];
+            return additionsStr.split('|').map(part => {
+                const [name, price] = part.split(':');
+                return {
+                    name: name.trim(),
+                    price: parseFloat(price) || 0
+                };
+            }).filter(a => a.name && !isNaN(a.price));
+        };
+
         const menuCategories: MenuCategory[] = categoriesRaw.map(cat => ({
             categoria: cat.categoria,
             theme: (cat.theme || 'parchment') as 'parchment' | 'grunge',
             imagen: cat.imagen || undefined,
             nota: cat.nota || undefined,
+            additions: parseAdditions(cat.adiciones),
             items: []
         }));
 
