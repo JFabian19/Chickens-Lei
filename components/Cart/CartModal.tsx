@@ -42,6 +42,12 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
         return sodaCategory?.items.some(i => i.nombre === itemName);
     };
 
+    // Helper to check if item is Burger
+    const isBurger = (itemName: string) => {
+        const burgerCategories = menuData.menu.filter(c => c.categoria === "Hamburguesas" || c.categoria === "Hamburguesas Especiales");
+        return burgerCategories.some(c => c.items.some(i => i.nombre === itemName));
+    };
+
     // Expand cart items into individual instances for configuration
     const expandedCart = useMemo(() => {
         const items: Array<{
@@ -77,6 +83,8 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
     const [saladConfigs, setSaladConfigs] = useState<Record<string, boolean>>({});
     // Map of instanceId -> side (Papas/Camotes)
     const [sideConfigs, setSideConfigs] = useState<Record<string, 'Papas' | 'Camote'>>({});
+    // Map of instanceId -> burger side (Papas Fritas/Papas al Hilo)
+    const [burgerSideConfigs, setBurgerSideConfigs] = useState<Record<string, 'Papas Fritas' | 'Papas al Hilo'>>({});
     // Map of instanceId -> soda flavor (Inka Cola/Coca-Cola)
     const [sodaConfigs, setSodaConfigs] = useState<Record<string, 'Inka Cola' | 'Coca-Cola'>>({});
 
@@ -85,6 +93,7 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
         const newSauceConfigs = { ...sauceConfigs };
         const newSaladConfigs = { ...saladConfigs };
         const newSideConfigs = { ...sideConfigs };
+        const newBurgerSideConfigs = { ...burgerSideConfigs };
         const newSodaConfigs = { ...sodaConfigs };
 
         expandedCart.forEach(item => {
@@ -100,11 +109,15 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
             if (!newSodaConfigs[item.instanceId] && isSoda(item.nombre)) {
                 newSodaConfigs[item.instanceId] = 'Inka Cola'; // Default flavor
             }
+            if (!newBurgerSideConfigs[item.instanceId] && isBurger(item.nombre)) {
+                newBurgerSideConfigs[item.instanceId] = 'Papas Fritas'; // Default burger side
+            }
         });
 
         setSauceConfigs(newSauceConfigs);
         setSaladConfigs(newSaladConfigs);
         setSideConfigs(newSideConfigs);
+        setBurgerSideConfigs(newBurgerSideConfigs);
         setSodaConfigs(newSodaConfigs);
     }, [expandedCart.length]); // Re-run if total item count changes
 
@@ -172,6 +185,14 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
         }));
     };
 
+    const toggleBurgerSide = (side: 'Papas Fritas' | 'Papas al Hilo') => {
+        if (!currentItem) return;
+        setBurgerSideConfigs(prev => ({
+            ...prev,
+            [currentItem.instanceId]: side
+        }));
+    };
+
     const handleNext = () => {
         if (currentConfigIndex < configurableItems.length - 1) {
             setCurrentConfigIndex(prev => prev + 1);
@@ -209,6 +230,12 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
                 if (isBroaster(item.nombre)) {
                     const side = sideConfigs[item.instanceId] || 'Papas';
                     message += `   Guarnición: ${side}\n`;
+                }
+
+                // Burger Side config
+                if (isBurger(item.nombre)) {
+                    const side = burgerSideConfigs[item.instanceId] || 'Papas Fritas';
+                    message += `   Papas: ${side}\n`;
                 }
 
                 // Salad config
@@ -249,6 +276,7 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
     const currentSelections = currentItem ? (sauceConfigs[currentItem.instanceId] || []) : [];
     const currentSalad = currentItem ? (saladConfigs[currentItem.instanceId] !== false) : true;
     const currentSide = currentItem ? (sideConfigs[currentItem.instanceId] || 'Papas') : 'Papas';
+    const currentBurgerSide = currentItem ? (burgerSideConfigs[currentItem.instanceId] || 'Papas Fritas') : 'Papas Fritas';
     const currentSodaFlavor = currentItem ? (sodaConfigs[currentItem.instanceId] || 'Inka Cola') : 'Inka Cola';
 
     return (
@@ -381,6 +409,35 @@ export const CartModal: React.FC<Props> = ({ onClose, phoneNumber }) => {
                                                         }`}
                                                 >
                                                     Camote Frito
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Burger Side Toggle */}
+                                    {currentItem && isBurger(currentItem.nombre) && (
+                                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-2">
+                                            <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                                🍟 Tipo de Papas
+                                            </h4>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => toggleBurgerSide('Papas Fritas')}
+                                                    className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm transition-all border-2 ${currentBurgerSide === 'Papas Fritas'
+                                                        ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
+                                                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    Papas Fritas
+                                                </button>
+                                                <button
+                                                    onClick={() => toggleBurgerSide('Papas al Hilo')}
+                                                    className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm transition-all border-2 ${currentBurgerSide === 'Papas al Hilo'
+                                                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                                                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    Papas al Hilo
                                                 </button>
                                             </div>
                                         </div>
